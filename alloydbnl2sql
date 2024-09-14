@@ -1,0 +1,38 @@
+-- FUNCTION: public.alloydbnl2sql(text)
+
+-- DROP FUNCTION IF EXISTS public.alloydbnl2sql(text);
+
+CREATE OR REPLACE FUNCTION public.alloydbnl2sql(
+	text)
+    RETURNS text
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+AS $BODY$
+declare 
+except_info public.EXCEPTION_INFO;
+sqltext text;
+begin
+		SELECT google_get_sql_current_schema into  sqltext 
+		from alloydb_ai_nl.google_get_sql_current_schema(sql_text => $1, 
+														 model_id => 'gemini-pro-text-to-sql' );
+ return sqltext;
+ 	exception 
+	when others then 
+	GET STACKED DIAGNOSTICS except_info.returned_sqlstate = RETURNED_SQLSTATE,
+	except_info.COLUMN_NAME = COLUMN_NAME,
+	except_info.CONSTRAINT_NAME = CONSTRAINT_NAME,
+	except_info.PG_DATATYPE_NAME = PG_DATATYPE_NAME,
+	except_info.MESSAGE_TEXT = MESSAGE_TEXT,
+	except_info.TABLE_NAME = TABLE_NAME ,
+	except_info.SCHEMA_NAME = SCHEMA_NAME,
+	except_info.PG_EXCEPTION_DETAIL = PG_EXCEPTION_DETAIL,
+	except_info.PG_EXCEPTION_HINT = PG_EXCEPTION_HINT,
+	except_info.PG_EXCEPTION_CONTEXT = PG_EXCEPTION_CONTEXT;
+	
+	return concat_ws(' ',except_info.MESSAGE_TEXT,except_info.PG_EXCEPTION_DETAIL,except_info.PG_EXCEPTION_HINT, except_info.PG_EXCEPTION_CONTEXT);
+ 	end;
+$BODY$;
+
+ALTER FUNCTION public.alloydbnl2sql(text)
+    OWNER TO postgres;
